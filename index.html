@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <script src="https://cdn.tailwindcss.com"></script>
+    <title>draggable test</title>
+  </head>
+  <body>
+    <nav><h1>Grello</h1></nav>
+    <div id="board-canvas">
+      <ol id="board">
+        <li
+          id="list1"
+          class="w-fit inline-block mx-1 p-3 px-8 border-gray-200 border rounded"
+        >
+          <div id="list-content1">
+            <div id="list-title1">List 1</div>
+            <ol id="list-cards1" class="min-h-5" data-target>
+              <li id="card1a" data-draggable>
+                Card 1
+                <div>Card content</div>
+              </li>
+              <li id="card2a" data-draggable>
+                Card 2
+                <div>Card content</div>
+              </li>
+            </ol>
+            <div id="list-footer2">Footer</div>
+          </div>
+        </li>
+        <li
+          id="list2"
+          class="w-fit inline-block mx-1 p-3 px-8 border-gray-200 border rounded"
+        >
+          <div id="list-content2">
+            <div id="list-title2">List 2</div>
+            <ol id="list-cards2" class="min-h-5" data-target>
+              <li id="card1b" data-draggable>
+                Card 1
+                <div>Card content</div>
+              </li>
+              <li id="card2b" data-draggable>
+                Card 2
+                <div>Card content</div>
+              </li>
+            </ol>
+            <div id="list-footer2">Footer</div>
+          </div>
+        </li>
+      </ol>
+    </div>
+  </body>
+  <style>
+    .dragging {
+      background-color: aqua;
+      position: absolute;
+      -webkit-transform-origin: 50% 0;
+      transform-origin: 50% 0;
+      -webkit-animation: swinging 2s linear forwards infinite;
+      animation: swinging 2s linear forwards infinite;
+    }
+    @keyframes swinging {
+      0% {
+        transform: rotate(0deg);
+      }
+      25% {
+        transform: rotate(10deg);
+      }
+      75% {
+        transform: rotate(-10deg);
+      }
+      100% {
+        transform: rotate(0deg);
+      }
+    }
+  </style>
+  <script>
+      // https://www.enablegeek.com/tutorial/javascript-move-element/
+    let state = {
+      eventToCoordinates(event) {
+        return { x: event.clientX, y: event.clientY };
+      },
+      dragging: null,
+    };
+    state.pos = { x: 0, y: 0 };
+
+    function start(event) {
+      if (event.button !== 0) return; // left button only
+      event.stopPropagation(); // for nested draggables
+      let { x, y } = state.eventToCoordinates(event);
+      state.dragging = { dx: state.pos.x - x, dy: state.pos.y - y };
+      this.classList.add("dragging");
+      this.setPointerCapture(event.pointerId);
+    }
+
+    function end(event) {
+      state.dragging = null;
+      this.classList.remove("dragging");
+      let { x, y } = state.eventToCoordinates(event);
+
+      // Find nearest draggable
+      // Find all the draggables
+      var allDraggables = document.querySelectorAll("[data-target]");
+      for (let el of allDraggables) {
+        let rect = getCoords(el);
+
+        if (
+          y > rect.top &&
+          y < rect.bottom &&
+          x > rect.left &&
+          x < rect.right
+        ) {
+          console.log("Moving...", el.id);
+          // post DOM to server?
+          // Sparse array -> HTMX -> Backend
+          document.getElementById(el.id).appendChild(this);
+          break;
+        }
+      }
+
+      this.style.position = "";
+      this.style.left = "";
+      this.style.top = "";
+    }
+
+    // get document coordinates of the element
+    function getCoords(elem) {
+      let box = elem.getBoundingClientRect();
+
+      return {
+        top: box.top + window.pageYOffset,
+        right: box.right + window.pageXOffset,
+        bottom: box.bottom + window.pageYOffset,
+        left: box.left + window.pageXOffset,
+      };
+    }
+
+    function move(event) {
+      if (!state.dragging) return;
+      event.stopPropagation(); // for nested draggables
+      let { x, y } = state.eventToCoordinates(event);
+      state.pos = { x: x + state.dragging.dx, y: y + state.dragging.dy };
+
+      this.style.position = "absolute";
+      this.style.left = x - (this.offsetWidth/2) + "px";
+      this.style.top = y - (this.offsetHeight/2) + "px";
+
+      // Find nearest draggable
+      // Find all the draggables
+      var allDraggables = document.querySelectorAll("[data-target]");
+
+      // The mouse is dragging and has x and y
+      for (let el of allDraggables) {
+        let rect = getCoords(el);
+        if (
+          y > rect.top &&
+          y < rect.bottom &&
+          x > rect.left &&
+          x < rect.right
+        ) {
+          console.log("Overlapping...", el.id);
+          break;
+        }
+      }
+    }
+
+    // Init - make everything data-draggable, draggable by adding a click handler
+    var allDraggables = document.querySelectorAll("[data-draggable]");
+
+    for (let el of allDraggables) {
+      el.style.border = "solid";
+      el.style.borderColor = "#ff0000";
+
+      el.addEventListener("pointerdown", start);
+      el.addEventListener("pointerup", end);
+      el.addEventListener("pointercancel", end);
+      el.addEventListener("pointermove", move);
+      el.addEventListener("touchstart", (e) => e.preventDefault());
+    }
+  </script>
+</html>
+
+<!--
+    * isDragged - CSS class to apply (cool to animate, based on cursor motion?)
+    * currentDraggedItem could just follow mouse as a DOM object copy and we hide the original...
+    * items can have a-draggdata-droppable and datable properties
+    * use size of currentDraggedItem to make space on data-droppable:hover
+    * Allow an "Archive all" option - https://css-tricks.com/animation-techniques-for-adding-and-removing-items-from-a-stack/
+-->
